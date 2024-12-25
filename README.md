@@ -12,7 +12,7 @@ Este componente permite:
 ```
 
 ## Ejemplo
-### HTML
+### HTML/index.html
 ```html
 <!DOCTYPE html>
 <html lang="es">
