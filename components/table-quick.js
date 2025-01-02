@@ -26,8 +26,7 @@
  *      }, donde title es el título descriptivo de la cabecera, key el nombre de
  *      la clave en el objeto de la fila, showFilter indica si se mostrará o no
  *      un campo de filtrado.
- *      El array headers debe ser de carga síncrona, en otras palabras, lo define
- *      el programador en tiempo de diseño.
+ *      El array headers puede ser de carga asíncrona, en otras palabras.
  *  
  *      rows: array de objetos con los datos de las filas. Puede ser
  *      de carga asíncrona.
@@ -46,7 +45,10 @@
  *
  *      controlsPagination: booleano que indica si se muestran o no
  *      los controles de paginación, por defecto es true.
- *
+ * 
+ *      multiselect: booleano que indica si se muestra o no una casilla de
+ *      selección en la primera columna. Si es true, cada vez que cambie el
+ *      estado de selección se emitirá el evento selectedChanged(selectedRows).
  * emits:
  *      filterChanged(currentRows): Cuando se produce un cambio en la ordenación o
  *      filtrado de las filas, recibe como argumento las filas filtradas.
@@ -92,7 +94,7 @@ app.component('table-quick', {
                         </label><br>                
                         <template v-for="col in headers" :key="col.key">
                             <label>
-                                <input type="checkbox" :checked="col.checked"
+                                <input type="checkbox" :checked="col[symColChecked]"
                                     @click="columnsSelecChange($event.target.checked, col)">
                                 {{ col.title }}
                             </label><br>
@@ -106,7 +108,7 @@ app.component('table-quick', {
                     <tr>
                         <th v-if="multiselect">
                             <input type="checkbox" :checked="selectedRowsEqualsRows" @click="changeChecked($event.target.checked, null)">
-                            <button type="button" title="Solo filtrados"
+                            <button type="button" title="Solo seleccionado"
                                 @click="filterSelected = !filterSelected"
                                 :class="{ 'filter-advanced': filterSelected }">
                                 &#x2611;
@@ -131,11 +133,11 @@ app.component('table-quick', {
                     <template v-for="(r, idx) of paginated" :key="idx">
                         <tr>
                             <td v-if="multiselect">
-                                <input type="checkbox" :checked="r.checked" @click="changeChecked($event.target.checked, r)">
+                                <input type="checkbox" :checked="r[symRowChecked]" @click="changeChecked($event.target.checked, r)">
                             </td>
                             <td v-if="$slots.extra">
                                 <a href="#" @click.prevent="expandChange(r)" style="text-decoration: none;">
-                                    {{ r.expand ? '∨': '>' }}                                    
+                                    {{ r[symRowExpand] ? '∨': '>' }}                                    
                                 </a>
                             </td>
                             <template v-for="h of selectedColumns" :key="h.key">                            
@@ -147,7 +149,7 @@ app.component('table-quick', {
                                 </td>
                             </template>
                         </tr>
-                        <tr v-if="$slots.extra && r.expand">
+                        <tr v-if="$slots.extra && r[symRowExpand]">
                             <td :colspan="(multiselect ? 2 : 1) + headers.length">
                                 <slot name="extra" :row="r"></slot>
                             </td>
@@ -164,7 +166,7 @@ app.component('table-quick', {
                 <button type="button" @click="nextPage">&#9654;</button>  
                 <label>
                     Filas/Página
-                    <select v-model="rowsPerPage" @change="setNumPages">
+                    <select v-model="currentRowsPerPage" @change="setNumPages">
                         <option v-for="rp in rowsSelectPage" :key="rp" :value="rp">{{ rp }}</option>
                     </select>
                 </label>        
@@ -217,6 +219,8 @@ app.component('table-quick', {
             currentPage: 1,
             numPages: undefined,
             paginated: [],
+            // Prop derivada mutable
+            currentRowsPerPage: this.rowsPerPage,
             filterAdvancedOptions: [{
                 value: 'cont',
                 text: 'Que contenga'
@@ -243,24 +247,33 @@ app.component('table-quick', {
                 text: 'Que no termine con'
             }],
             filterAdvancedIdx: 0,
-            selectedRows: [],            
+            selectedRows: [],
             selectedColumns: [],
             columnsSelectDisplayed: false,
             filterSelected: false
         }
     },
-    methods: {               
+    methods: {
         columnsSelecChange(value, col) {
             if (col) {
-                col.checked = value;
+                col[this.symColChecked] = value;
                 if (value) {
-                    this.selectedColumns.push(col);
+                    // Se tiene que colocar en la posición adecuada
+                    const iCol = this.headers.findIndex(h => h === col);
+                    let iCurrent = 0;
+                    for (const selCol of this.selectedColumns) {
+                        const iSelCol = this.headers.findIndex(h => h === selCol);
+                        if (iSelCol > iCol) break;
+                        iCurrent++;
+                    }
+                    // Se inserta en iCurrent
+                    this.selectedColumns.splice(iCurrent, 0, col);
                 } else {
                     this.selectedColumns = this.selectedColumns.filter(c => c !== col);
                 }
             } else {
-                for (let col of this.headers) {
-                    col.checked = value;
+                for (const col of this.headers) {
+                    col[this.symColChecked] = value;
                 }
                 this.selectedColumns = value ? this.headers : [];
             }
@@ -287,19 +300,19 @@ app.component('table-quick', {
             }
         },
         expandChange(row) {
-            row.expand = !row.expand;
+            row[this.symRowExpand] = !row[this.symRowExpand];
         },
         changeChecked(value, row) {
             if (row) {
-                row.checked = value;
+                row[this.symRowChecked] = value;
                 if (value) {
                     this.selectedRows.push(row);
                 } else {
                     this.selectedRows = this.selectedRows.filter(r => r !== row);
                 }
             } else {
-                for (let row of this.currentRows) {
-                    row.checked = value;
+                for (const row of this.currentRows) {
+                    row[this.symRowChecked] = value;
                 }
                 this.selectedRows = value ? this.currentRows : [];
             }
@@ -334,7 +347,7 @@ app.component('table-quick', {
         },
         // Desaplica todos los filtros activos
         filters_unapply() {
-            for (let filter of this.hFilter) {
+            for (const filter of this.hFilter) {
                 if (filter.isRegExp) {
                     filter.isRegExp = false;
                     filter.text = '';
@@ -391,7 +404,7 @@ app.component('table-quick', {
 
                 // Comprueba solo los filtros con contenido
                 const filterKeys = [];
-                for (let f of this.hFilter) {
+                for (const f of this.hFilter) {
                     if (!f.text) continue;
 
                     let filter;
@@ -411,7 +424,7 @@ app.component('table-quick', {
                 // Agrega solo las filas que pasen los filtros de texto
                 if (filterKeys.length) {
                     this.currentRows = [];
-                    for (let row of this.rows) {
+                    for (const row of this.rows) {
                         let add = true;
                         for (let i = 0; i < filterKeys.length; i++) {
                             let match;
@@ -427,7 +440,7 @@ app.component('table-quick', {
                         }
 
                         if (this.filterSelected) {
-                            add = row.checked;
+                            add = row[this.symRowChecked];
                         }
 
                         if (add) {
@@ -502,7 +515,7 @@ app.component('table-quick', {
             return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
         },
         setNumPages() {
-            this.numPages = Math.ceil(this.currentRows.length / this.rowsPerPage);
+            this.numPages = Math.ceil(this.currentRows.length / this.currentRowsPerPage);
             this.currentPage = 1;
             this.showCurrentPage();
         },
@@ -523,8 +536,8 @@ app.component('table-quick', {
         // Muestra la página actual
         showCurrentPage() {
             // Calculamos el paginado
-            const start = (this.currentPage - 1) * this.rowsPerPage;
-            this.paginated = this.currentRows.slice(start, start + this.rowsPerPage);
+            const start = (this.currentPage - 1) * this.currentRowsPerPage;
+            this.paginated = this.currentRows.slice(start, start + this.currentRowsPerPage);
             this.$emit('paginatedChanged', this.paginated);
         },
         download_csv() {
@@ -555,7 +568,7 @@ app.component('table-quick', {
             const sb = [];
 
             // Trabajaremos con las cabeceras
-            const hs = this.headers.filter(h => h.checked);
+            const hs = this.headers.filter(h => h[this.symColChecked]);
 
             // Cabeceras del CSV            
             for (let i = 0; i < hs.length; i++) {
@@ -569,7 +582,7 @@ app.component('table-quick', {
             sb.push('\n');
 
             // Cuerpo del CSV            
-            for (let r of this.currentRows) {
+            for (const r of this.currentRows) {
                 for (let i = 0; i < hs.length; i++) {
                     sb.push('\"');
                     sb.push(String(r[hs[i].key] ?? '').replace("\"", "\"\""));
@@ -710,7 +723,7 @@ app.component('table-quick', {
         },
         updateHeaderFilters() {
             this.hFilter = [];
-            for (let h of this.headers.filter(h => h.checked)) {
+            for (const h of this.headers.filter(h => h[this.symColChecked])) {
                 this.hFilter.push({
                     text: '',
                     key: h.key,
@@ -725,15 +738,15 @@ app.component('table-quick', {
             this.updateHeaderFilters();
             this.currentRows = this.rows;
             this.$emit('filterChanged', this.currentRows);
-            this.setNumPages();            
+            this.setNumPages();
             this.sortOrFilter();
         }
     },
-    computed: {        
+    computed: {
         /**
          * Devuelve un nombre de componente único.
          * @returns {string}
-         */        
+         */
         componentUid() {
             // Buscamos el nombre del componente
             let name = null;
@@ -743,16 +756,16 @@ app.component('table-quick', {
                     break;
                 }
             }
-                      
+
             return `vue-${name}-${btoa(name).replace(/[+/=]/g, '')}`;
         },
         selectedRowsEqualsRows() {
             if (this.selectedRows.length < this.currentRows.length) return false;
 
             // Solo es necesario verificar los de la página actual
-            for (let p of this.paginated) {
+            for (const p of this.paginated) {
                 let match = false;
-                for (let s of this.selectedRows) {
+                for (const s of this.selectedRows) {
                     if (s === p) {
                         match = true;
                         break;
@@ -781,22 +794,31 @@ app.component('table-quick', {
             return 'Permite filtrar por el texto introducido, no se distiguen mayúsculas de minúsculas ni letras acentuadas o no';
         },
         appliedFilters() {
-            for (let f of this.hFilter) {
+            for (const f of this.hFilter) {
                 if (f.isRegExp) {
                     return true;
                 }
             }
             return false;
+        },
+        symRowExpand() {
+            return Symbol('Indica si la fila extra está expandida');
+        },
+        symRowChecked() {
+            return Symbol('Indica si la fila está seleccionada');
+        },
+        symColChecked() {
+            return Symbol('Indica si una columna está visible');
         }
     },
-    watch: {        
+    watch: {
         /**
          * Es necesario escuchar para recalcular las filas visibles
          * debido a que las filas podrían cargarse de forma asíncrona.        
          */
         'rows.length'() {
             this.change();
-        },        
+        },
         /**
          * Si las cabeceras cambian dinámicamente, marca
          * como visibles todas las columnas.

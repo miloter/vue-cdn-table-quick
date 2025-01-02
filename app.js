@@ -1,8 +1,13 @@
 const app = Vue.createApp({
     template: /*html*/`
-        <table-quick :headers="headers" :rows="rows" :rowsPerPage="4"
-            controlPosition="both" :csvExport="true"
-            @filterChanged="onFilterChanged" @paginatedChanged="onPaginatedChanged">            
+        <table-quick :headers="headers" :rows="rows" :rowsPerPage="5"
+            controlPosition="both" :csvExport="true" :multiselect="true"
+            @filterChanged="onFilterChanged"
+            @paginatedChanged="onPaginatedChanged"
+            @selectedChanged="onSelectedChanged">
+            <template #extra="{ row }">
+                {{ row }}
+            </template>
             <template #['thumbnailUrl']="{ row }">                                            
                 <img :src="row.thumbnailUrl" width="150" alt="Miniatura de imagen">                
             </template>            
@@ -38,11 +43,14 @@ const app = Vue.createApp({
             });
         },
         onFilterChanged(currentRows) {
-            console.log('nuevo filtrado de ' + currentRows.length + ' filas ');
+            console.log('nuevo filtrado de ' + currentRows.length + ' filas');
         },
         onPaginatedChanged(paginatedRows) {
-            console.log('nueva página de ' + paginatedRows.length + ' filas ');
-        }
+            console.log('nueva página de ' + paginatedRows.length + ' filas');
+        },
+        onSelectedChanged(selectedRows) {
+            console.log('nueva selección de ' + selectedRows.length + ' filas');
+        }        
     },
     computed: {
         apiUrl() {
