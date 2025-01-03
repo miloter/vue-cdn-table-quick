@@ -75,12 +75,12 @@ app.component('table-quick', {
         <div :class="componentUid">
             <div class="top-controls">                  
                 <button v-if="appliedFilters" type="button"
-                    @click="filters_unapply" class="filters-unapply"
+                    @click="filtersUnapply" class="filters-unapply"
                     title="Desaplica todos los filtros existentes">
                     &#x1F704;
                 </button>                
                 <div>{{ currentRows.length }} filas de {{ rows.length}}</div>
-                <a v-if="csvExport" href="#" @click="download_csv" title="Exporta el filtrado actual a un archivo CSV">CSV</a>
+                <a v-if="csvExport" href="#" @click="downloadCsv" title="Exporta el filtrado actual a un archivo CSV">CSV</a>
                 <div v-if="columnsMultiSelect" class="columns-multiselect">                        
                     <button type="button" @click="columnsSelectDisplayed = !columnsSelectDisplayed">
                         Mostrar/ocultar columnas
@@ -121,7 +121,7 @@ app.component('table-quick', {
                                 <input type="text" class="input-filter"
                                     :title="filterTitle" v-model.trim="hFilter[idx].text"
                                     @keyup="sortOrFilter(false, h.key)">                                
-                                <button type="button" @click="modal_show(idx)"
+                                <button type="button" @click="modalShow(idx)"
                                     :class="{ 'filter-advanced': hFilter[idx].isRegExp }"
                                     title="Muestra el filtro avanzado">&#x2699;</button>
                             </div>                                          
@@ -162,7 +162,7 @@ app.component('table-quick', {
                 <button type="button" @click="prevPage">&#9664;</button>
                 Página <input type="number" :min="1" :max="numPages"
                         v-model="currentPage"
-                        @keyup.enter="currentPage_enter">  de {{ numPages }}
+                        @keyup.enter="currentPageEnter">  de {{ numPages }}
                 <button type="button" @click="nextPage">&#9654;</button>  
                 <label>
                     Filas/Página
@@ -173,7 +173,7 @@ app.component('table-quick', {
             </div>
             <dialog v-if="hFilter.length > 0"  ref="modal" class="dialog-modal">
                 <h3 class="dialog-modal-title">Filtro avanzado [{{ headers[filterAdvancedIdx].title }}]</h3>                
-                <form method="dialog" @submit="modal_apply_close">
+                <form method="dialog" @submit="modalApplyClose">
                     <div class="dialog-header">                        
                         <select v-model="hFilter[filterAdvancedIdx].regExpType"
                             title="Seleccione el tipo de filtro">
@@ -182,17 +182,17 @@ app.component('table-quick', {
                                 {{ opt.text }}
                             </option>
                         </select>
-                        <button type="button" @click="modal_apply"
+                        <button type="button" @click="modalApply"
                             title="Aplica el filtro y mantiene abierto el diálogo">Aplicar</button>
-                        <button type="button" @click="filter_advanced_field_add"
+                        <button type="button" @click="filterAdvancedFieldAdd"
                             title="Agrega un nuevo campo de filtro">&#x2b;</button>                        
                     </div>
                     <div class="dialog-body">
                         <div v-for="(field, idx) of hFilter[filterAdvancedIdx].regExpFields" :key="idx">
                             <input type="text" v-model="hFilter[filterAdvancedIdx].regExpFields[idx]"
                                 title="Escriba aquí el texto para este filtro"
-                                @keydown.prevent.enter="modal_apply">                            
-                            <button type="button" @click="filter_advanced_field_sub(idx)"
+                                @keydown.prevent.enter="modalApply">                            
+                            <button type="button" @click="filterAdvancedFieldSub(idx)"
                                 title="Elimina este campo del filtro"                
                                 :disabled="idx === 0">&#x2d;</button>
                             <span> O </span>
@@ -202,9 +202,9 @@ app.component('table-quick', {
                         <button type="submit"
                             title="Aplica el filtro y cierra el diálogo">Aplicar y cerrar</button>
           .              <button type="button"
-                            title="Cierra el diálogo" @click="modal_close">Cerrar</button>
+                            title="Cierra el diálogo" @click="modalClose">Cerrar</button>
                         <button type="button" title="Desaplica el filtro y cierra el diálogo"
-                            @click="modal_unapply_close">Desaplicar y Cerrar</button>
+                            @click="modalUnapplyClose">Desaplicar y Cerrar</button>
                     </div>
                 </form>
             </dialog>
@@ -318,14 +318,14 @@ app.component('table-quick', {
             }
             this.$emit('selectedChanged', this.selectedRows);
         },
-        modal_show(idx) {
+        modalShow(idx) {
             this.filterAdvancedIdx = idx;
             this.$refs.modal.showModal();
         },
-        modal_apply_close() {
-            this.modal_apply();
+        modalApplyClose() {
+            this.modalApply();
         },
-        modal_apply() {
+        modalApply() {
             const filter = this.hFilter[this.filterAdvancedIdx];
             filter.text = this.getPatternOfFields(filter);
             filter.isRegExp = filter.text.length > 0;
@@ -334,10 +334,10 @@ app.component('table-quick', {
             }
             this.sortOrFilter();
         },
-        modal_close() {
+        modalClose() {
             this.$refs.modal.close();
         },
-        modal_unapply_close() {
+        modalUnapplyClose() {
             const filter = this.hFilter[this.filterAdvancedIdx];
 
             filter.isRegExp = false;
@@ -346,7 +346,7 @@ app.component('table-quick', {
             this.sortOrFilter();
         },
         // Desaplica todos los filtros activos
-        filters_unapply() {
+        filtersUnapply() {
             for (const filter of this.hFilter) {
                 if (filter.isRegExp) {
                     filter.isRegExp = false;
@@ -355,10 +355,10 @@ app.component('table-quick', {
             }
             this.sortOrFilter();
         },
-        filter_advanced_field_add() {
+        filterAdvancedFieldAdd() {
             this.hFilter[this.filterAdvancedIdx].regExpFields.push('');
         },
-        filter_advanced_field_sub(idx) {
+        filterAdvancedFieldSub(idx) {
             this.hFilter[this.filterAdvancedIdx].regExpFields.splice(idx, 1);
         },
         getPatternOfFields(filter) {
@@ -529,7 +529,7 @@ app.component('table-quick', {
             this.currentPage++;
             this.showCurrentPage();
         },
-        currentPage_enter() {
+        currentPageEnter() {
             if (this.currentPage < 1 || this.currentPage > this.numPages) return;
             this.showCurrentPage();
         },
@@ -540,7 +540,7 @@ app.component('table-quick', {
             this.paginated = this.currentRows.slice(start, start + this.currentRowsPerPage);
             this.$emit('paginatedChanged', this.paginated);
         },
-        download_csv() {
+        downloadCsv() {
             this.downloadFileCSV('datos.csv', this.getRowsToCsv());
         },
         // Descarga un fichero simulando un click
@@ -838,8 +838,7 @@ app.component('table-quick', {
         this.change();
     },
     mounted() {
-        document.addEventListener('click', this.clickOutside);
-        this.$refs.modal.onsubmit = this.modal_submit;
+        document.addEventListener('click', this.clickOutside);        
     },
     unmounted() {
         document.removeEventListener('click', this.clickOutside);
