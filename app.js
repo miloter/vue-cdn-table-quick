@@ -1,6 +1,18 @@
 const app = Vue.createApp({
     template: /*html*/`
-        <table-quick :headers="headers" :rows="rows" :rowsPerPage="5"
+        <table-quick :headers="headers" :rows="rows" :rowsPerPage="2"
+            controlPosition="both" :csvExport="true" :multiselect="true"
+            @filterChanged="onFilterChanged"
+            @paginatedChanged="onPaginatedChanged"
+            @selectedChanged="onSelectedChanged">
+            <template #extra="{ row }">
+                {{ row }}
+            </template>
+            <template #['thumbnailUrl']="{ row }">                                            
+                <img :src="row.thumbnailUrl" width="150" alt="Miniatura de imagen">                
+            </template>            
+        </table-quick>        
+        <table-quick :headers="headers" :rows="rows" :rowsPerPage="2"
             controlPosition="both" :csvExport="true" :multiselect="true"
             @filterChanged="onFilterChanged"
             @paginatedChanged="onPaginatedChanged"

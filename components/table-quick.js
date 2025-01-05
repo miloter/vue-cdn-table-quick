@@ -81,7 +81,9 @@ app.component('table-quick', {
                 </button>                
                 <div>{{ currentRows.length }} filas de {{ rows.length}}</div>
                 <a v-if="csvExport" href="#" @click="downloadCsv" title="Exporta el filtrado actual a un archivo CSV">CSV</a>
-                <div v-if="columnsMultiSelect" class="columns-multiselect">                        
+                <div v-if="columnsMultiSelect"
+                    class="columns-multiselect" :class="instanceUid"
+                    @keyup.esc="columnsSelectDisplayed = false">                        
                     <button type="button" @click="columnsSelectDisplayed = !columnsSelectDisplayed">
                         Mostrar/ocultar columnas
                     </button>                            
@@ -284,11 +286,11 @@ app.component('table-quick', {
 
             // Se comprueba que no exista en ningún elemento contenedor
             // la clase:
-            const className = 'columns-multiselect';
+            // const className = 'columns-multiselect';
             let el = e.target;
             let exists = false;
             while (el !== null) {
-                if (el.classList.contains(className)) {
+                if (el.classList.contains(this.instanceUid)) {
                     exists = true;
                     break;
                 }
@@ -744,7 +746,14 @@ app.component('table-quick', {
     },
     computed: {
         /**
-         * Devuelve un nombre de componente único.
+         * Devuelve un ID de instancia del componente único.
+         */
+        instanceUid() {
+            return crypto.randomUUID();
+        },
+        /**
+         * Devuelve un nombre de componente único basado en el nombre del
+         * componente, todas las instancias compartirán este ID.
          * @returns {string}
          */
         componentUid() {
