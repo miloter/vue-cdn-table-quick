@@ -7,7 +7,7 @@
  *
  * @author miloter
  * @since 2024-05-11
- * @version 2024-12-25
+ * @version 2025-01-09
  *
  * Ordenación y filtrado: se realiza únicamente en las filas que pertenecen
  * al cuerpo de la tabla, excluyendo la fila de cabecera y las del pie.
@@ -37,8 +37,8 @@
  *      rowsSelectPage: Array de número de filas por página, por
  *      defecto es [2, 5, 10, 20, 50].
  *
- *      columnsMultiSelect: booleano que indica si se muestra o no
- *      un cuadro de selección de columnas visibles.
+ *      columnsMultiselect: booleano que indica si se muestra o no
+ *      un cuadro de selección de columnas visibles, por defecto es true.
  *
  *      csvExport: booleano que indica si se muestra o no un botón
  *      de exportación a archivo CSV, por defecto es true.
@@ -65,7 +65,7 @@ app.component('table-quick', {
         rows: Array,
         rowsPerPage: { type: Number, default: 10 },
         rowsSelectPage: { type: Array, default: () => [2, 5, 10, 20, 50] },
-        columnsMultiSelect: { type: Boolean, default: true },
+        columnsMultiselect: { type: Boolean, default: true },
         csvExport: { type: Boolean, default: true },
         controlsPagination: { type: Boolean, default: true },
         multiselect: { type: Boolean, default: false }
@@ -81,7 +81,7 @@ app.component('table-quick', {
                 </button>                
                 <div>{{ currentRows.length }} filas de {{ rows.length}}</div>
                 <a v-if="csvExport" href="#" @click="downloadCsv" title="Exporta el filtrado actual a un archivo CSV">CSV</a>
-                <div v-if="columnsMultiSelect"
+                <div v-if="columnsMultiselect"
                     class="columns-multiselect" :class="instanceUid"
                     @keyup.esc="columnsSelectDisplayed = false">                        
                     <button type="button" @click="columnsSelectDisplayed = !columnsSelectDisplayed">
