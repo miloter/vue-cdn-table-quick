@@ -252,7 +252,11 @@ app.component('table-quick', {
             selectedRows: [],
             selectedColumns: [],
             columnsSelectDisplayed: false,
-            filterSelected: false
+            filterSelected: false,
+            // Símbolos del componente
+            symRowExpand: Symbol('Indica si la fila extra está expandida'),            
+            symRowChecked: Symbol('Indica si la fila está seleccionada'),            
+            symColChecked: Symbol('Indica si una columna está visible')     
         }
     },
     methods: {
@@ -809,16 +813,7 @@ app.component('table-quick', {
                 }
             }
             return false;
-        },
-        symRowExpand() {
-            return Symbol('Indica si la fila extra está expandida');
-        },
-        symRowChecked() {
-            return Symbol('Indica si la fila está seleccionada');
-        },
-        symColChecked() {
-            return Symbol('Indica si una columna está visible');
-        }
+        }        
     },
     watch: {
         /**
