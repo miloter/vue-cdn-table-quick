@@ -1,7 +1,7 @@
 const app = Vue.createApp({
     template: /*html*/`
         <table-quick :headers="headers" :rows="rows" :rowsPerPage="2"
-            controlPosition="both" :csvExport="true" :multiselect="true"
+            controlPosition="both" :csvExport="true" :multiselect="true"            
             @filterChanged="onFilterChanged"
             @paginatedChanged="onPaginatedChanged"
             @selectedChanged="onSelectedChanged"

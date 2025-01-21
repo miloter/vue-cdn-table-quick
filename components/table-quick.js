@@ -39,6 +39,9 @@
  *
  *      columnsMultiselect: booleano que indica si se muestra o no
  *      un cuadro de selección de columnas visibles, por defecto es true.
+ * 
+ *      columnsMaxHeight: Un número entero que indica la altura de la vista
+ *      de columnas seleccionables, el número indica la cantidad de rem.
  *
  *      csvExport: booleano que indica si se muestra o no un botón
  *      de exportación a archivo CSV, por defecto es true.
@@ -73,6 +76,7 @@ app.component('table-quick', {
         rowsPerPage: { type: Number, default: 10 },
         rowsSelectPage: { type: Array, default: () => [2, 5, 10, 20, 50] },
         columnsMultiselect: { type: Boolean, default: true },
+        columnsMaxHeight: { type: Number, default: 16 },
         csvExport: { type: Boolean, default: true },
         controlsPagination: { type: Boolean, default: true },
         multiselect: { type: Boolean, default: false }
@@ -721,6 +725,8 @@ app.component('table-quick', {
                     z-index: 1;
                     background-color: lightgray;
                     border: 1px solid black;
+                    max-height: ${this.columnsMaxHeight}rem;
+                    overflow: auto;
                 }
 
                 .${this.componentUid} .columns-multiselect-label-main {
