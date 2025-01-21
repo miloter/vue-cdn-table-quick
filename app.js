@@ -4,26 +4,16 @@ const app = Vue.createApp({
             controlPosition="both" :csvExport="true" :multiselect="true"
             @filterChanged="onFilterChanged"
             @paginatedChanged="onPaginatedChanged"
-            @selectedChanged="onSelectedChanged">
+            @selectedChanged="onSelectedChanged"
+            @selectedColumnsChanged="onSelectedColumnsChanged"
+            @expandChanged="onExpandChanged">
             <template #extra="{ row }">
                 {{ row }}
             </template>
             <template #['thumbnailUrl']="{ row }">                                            
                 <img :src="row.thumbnailUrl" width="150" alt="Miniatura de imagen">                
             </template>            
-        </table-quick>        
-        <table-quick :headers="headers" :rows="rows" :rowsPerPage="2"
-            controlPosition="both" :csvExport="true" :multiselect="true"
-            @filterChanged="onFilterChanged"
-            @paginatedChanged="onPaginatedChanged"
-            @selectedChanged="onSelectedChanged">
-            <template #extra="{ row }">
-                {{ row }}
-            </template>
-            <template #['thumbnailUrl']="{ row }">                                            
-                <img :src="row.thumbnailUrl" width="150" alt="Miniatura de imagen">                
-            </template>            
-        </table-quick>        
+        </table-quick>    
     `,
     data() {
         return {            
@@ -62,6 +52,13 @@ const app = Vue.createApp({
         },
         onSelectedChanged(selectedRows) {
             console.log('nueva selección de ' + selectedRows.length + ' filas');
+        },        
+        onSelectedColumnsChanged(selectedColums) {
+            console.log('nueva selección de ' + selectedColums.length +
+                ' columnas:', selectedColums);
+        },
+        onExpandChanged(isOpened, row) {
+            console.log('Fila expandida: ' + isOpened, ':', row);
         }        
     },
     computed: {

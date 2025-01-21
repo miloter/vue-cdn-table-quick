@@ -58,6 +58,13 @@
  *
  *      selectedChanged(selectedRows): cuando se produce un cambio en las filas
  *      seleccionadas, el argumento son las filas seleccionadas.
+ * 
+ *      selectedColumnsChanged(selectedColumns): Se produce cuando cambian las
+ *      columnas seleccionadas.
+ * 
+ *      expandChanged(isOpened, row): Si se implementa el slot #extra, se emitirá
+ *      dicho evento con un indicador truthy de expandido y la fila afectada por
+ *      la expasión/contracción de la fila.
  */
 app.component('table-quick', {
     props: {
@@ -70,7 +77,9 @@ app.component('table-quick', {
         controlsPagination: { type: Boolean, default: true },
         multiselect: { type: Boolean, default: false }
     },
-    emits: ['filterChanged', 'paginatedChanged', 'selectedChanged'],
+    emits: ['filterChanged', 'paginatedChanged', 'selectedChanged',
+        'selectedColumnsChanged', 'expandChanged'
+    ],
     template: /*html*/`
         <div :class="componentUid">
             <div class="top-controls">                  
@@ -90,14 +99,14 @@ app.component('table-quick', {
                     <div v-show="columnsSelectDisplayed" class="columns-multiselect-checkboxes">
                         <label class="columns-multiselect-label-main">
                             <input type="checkbox"
-                                :checked="selectedColumns.length === headers.length"
-                                @click="columnsSelecChange($event.target.checked, null)">
+                                :checked="filteredSelectedColumns.length === headers.length"
+                                @click="selectedColumnsChanged($event.target.checked, null)">
                             - Todas Visibles -
                         </label><br>                
                         <template v-for="col in headers" :key="col.key">
                             <label>
-                                <input type="checkbox" :checked="col[symColChecked]"
-                                    @click="columnsSelecChange($event.target.checked, col)">
+                                <input type="checkbox" :checked="col.checked"
+                                    @click="selectedColumnsChanged($event.target.checked, col)">
                                 {{ col.title }}
                             </label><br>
                         </template>
@@ -117,7 +126,7 @@ app.component('table-quick', {
                             </button>
                         </th>  
                         <th v-if="$slots.extra">&nbsp;</th>                            
-                        <th v-for="(h, idx) of selectedColumns" :key="idx">                
+                        <th v-for="(h, idx) of filteredSelectedColumns" :key="idx">                
                             <div v-if="h.showFilter" class="filter-controls">
                                 <span :title="sortTitle" class="sort" @click="sortOrFilter(true, h.key)">&udarr;</span>
                                 <input type="text" class="input-filter"
@@ -138,11 +147,11 @@ app.component('table-quick', {
                                 <input type="checkbox" :checked="r[symRowChecked]" @click="changeChecked($event.target.checked, r)">
                             </td>
                             <td v-if="$slots.extra">
-                                <a href="#" @click.prevent="expandChange(r)" style="text-decoration: none;">
+                                <a href="#" @click.prevent="expandChanged(r)" style="text-decoration: none;">
                                     {{ r[symRowExpand] ? '∨': '>' }}                                    
                                 </a>
                             </td>
-                            <template v-for="h of selectedColumns" :key="h.key">                            
+                            <template v-for="h of filteredSelectedColumns" :key="h.key">                            
                                 <td v-if="$slots[h.key]">                                
                                     <slot :name="h.key" :row="r"></slot>
                                 </td>
@@ -249,41 +258,38 @@ app.component('table-quick', {
                 text: 'Que no termine con'
             }],
             filterAdvancedIdx: 0,
-            selectedRows: [],
-            selectedColumns: [],
+            selectedRows: [],            
             columnsSelectDisplayed: false,
             filterSelected: false,
             // Símbolos del componente
             symRowExpand: Symbol('Indica si la fila extra está expandida'),            
-            symRowChecked: Symbol('Indica si la fila está seleccionada'),            
-            symColChecked: Symbol('Indica si una columna está visible')     
+            symRowChecked: Symbol('Indica si la fila está seleccionada')
         }
     },
     methods: {
-        columnsSelecChange(value, col) {
-            if (col) {
-                col[this.symColChecked] = value;
-                if (value) {
-                    // Se tiene que colocar en la posición adecuada
-                    const iCol = this.headers.findIndex(h => h === col);
-                    let iCurrent = 0;
-                    for (const selCol of this.selectedColumns) {
-                        const iSelCol = this.headers.findIndex(h => h === selCol);
-                        if (iSelCol > iCol) break;
-                        iCurrent++;
-                    }
-                    // Se inserta en iCurrent
-                    this.selectedColumns.splice(iCurrent, 0, col);
-                } else {
-                    this.selectedColumns = this.selectedColumns.filter(c => c !== col);
+        /**
+         * Las columnas que tienen el atributo checked a true o las que no
+         * lo tienen se muestran inicialmente visibles
+         */
+        updateHeadersChecked() {
+            for (const col of this.headers) {
+                if (!('checked' in col)) {
+                    col.checked = true;
                 }
-            } else {
-                for (const col of this.headers) {
-                    col[this.symColChecked] = value;
-                }
-                this.selectedColumns = value ? this.headers : [];
             }
             this.updateHeaderFilters();
+            this.$emit('selectedColumnsChanged', this.filteredSelectedColumns);
+        },
+        selectedColumnsChanged(value, col) {
+            if (col) {
+                col.checked = value;
+            } else {
+                for (const col of this.headers) {
+                    col.checked = value;
+                }
+            }
+            this.updateHeaderFilters();
+            this.$emit('selectedColumnsChanged', this.filteredSelectedColumns);
         },
         clickOutside(e) {
             if (!this.columnsSelectDisplayed) return;
@@ -304,9 +310,10 @@ app.component('table-quick', {
             if (!exists) {
                 this.columnsSelectDisplayed = false;
             }
-        },
-        expandChange(row) {
+        },        
+        expandChanged(row) {
             row[this.symRowExpand] = !row[this.symRowExpand];
+            this.$emit('expandChanged', row[this.symRowExpand], row);
         },
         changeChecked(value, row) {
             if (row) {
@@ -574,7 +581,7 @@ app.component('table-quick', {
             const sb = [];
 
             // Trabajaremos con las cabeceras
-            const hs = this.headers.filter(h => h[this.symColChecked]);
+            const hs = this.headers.filter(h => h.checked);
 
             // Cabeceras del CSV            
             for (let i = 0; i < hs.length; i++) {
@@ -729,7 +736,7 @@ app.component('table-quick', {
         },
         updateHeaderFilters() {
             this.hFilter = [];
-            for (const h of this.headers.filter(h => h[this.symColChecked])) {
+            for (const h of this.headers.filter(h => h.checked)) {
                 this.hFilter.push({
                     text: '',
                     key: h.key,
@@ -749,6 +756,13 @@ app.component('table-quick', {
         }
     },
     computed: {
+        /**
+         * Devuelve las columnas seleccionadas.
+         * @returns 
+         */
+        filteredSelectedColumns() {
+            return this.headers.filter(h => h.checked);
+        },
         /**
          * Devuelve un ID de instancia del componente único.
          */
@@ -790,10 +804,7 @@ app.component('table-quick', {
             }
 
             return true;
-        },
-        visibleColumn(col) {
-            return this.selectedColumns.some(c => c === col)
-        },
+        },        
         reDateString() {
             return /^\d{2}(?:\/|-)\d{2}(?:\/|-)\d{4}$/;
         },
@@ -828,7 +839,7 @@ app.component('table-quick', {
          * como visibles todas las columnas.
          */
         'headers.length'() {
-            this.columnsSelecChange(true, null);
+            this.updateHeadersChecked();
         },
         // Si cambia el filtro de selección
         filterSelected() {
@@ -838,7 +849,9 @@ app.component('table-quick', {
     created() {
         // Establece los estilos del componente
         this.setComponentStyles();
-        this.columnsSelecChange(true, null);
+        // Actualiza la propiedad de selección de cada columna
+        this.updateHeadersChecked();
+        // Fuerza la actualización de todos los elementos    
         this.change();
     },
     mounted() {
