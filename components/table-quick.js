@@ -40,7 +40,7 @@
  *      columnsMultiselect: booleano que indica si se muestra o no
  *      un cuadro de selección de columnas visibles, por defecto es true.
  * 
- *      columnsMaxHeight: Un número entero que indica la altura de la vista
+ *      columnsMultiselectMaxHeight: Un número entero que indica la altura de la vista
  *      de columnas seleccionables, el número indica la cantidad de rem.
  *
  *      csvExport: booleano que indica si se muestra o no un botón
@@ -76,7 +76,7 @@ app.component('table-quick', {
         rowsPerPage: { type: Number, default: 10 },
         rowsSelectPage: { type: Array, default: () => [2, 5, 10, 20, 50] },
         columnsMultiselect: { type: Boolean, default: true },
-        columnsMaxHeight: { type: Number, default: 16 },
+        columnsMultiselectMaxHeight: { type: Number, default: 16 },
         csvExport: { type: Boolean, default: true },
         controlsPagination: { type: Boolean, default: true },
         multiselect: { type: Boolean, default: false }
@@ -579,36 +579,70 @@ app.component('table-quick', {
             // Se borra el elemento creado
             document.body.removeChild(el);
         },
-        // Devuelve la filas en una cadena con formato CSV        
+        /**
+         * Devuelve la filas en una cadena con formato CSV.
+         * @returns {string}
+         */
         getRowsToCsv() {
+            // Nueva línea estándar en un CSV
+            const nl = '\r\n';
+            // Caracter de entrecomillado para campos que lo requieran
+            const quotes = '"';
+            const dblQuotes = quotes + quotes;
+            // Carácter separador de campos
+            const sep = ';';
             // Generamos la cadena en formato CSV            
             const sb = [];
 
             // Trabajaremos con las cabeceras
             const hs = this.headers.filter(h => h.checked);
 
-            // Cabeceras del CSV            
-            for (let i = 0; i < hs.length; i++) {
-                sb.push('\"');
-                sb.push(hs[i].title.replaceAll("\"", "\"\""));
-                sb.push('\"');
-                if (i < (hs.length - 1)) {
-                    sb.push(';');
+            // Escribe el valor actual en el array
+            function writeValue(sb, value) {
+                const hasSep = value.includes(sep);
+                const hasQuotes = value.includes(quotes);
+                const hasLines = value.includes('\r') || value.includes('\n');
+
+                if (hasSep || hasQuotes || hasLines) {
+                    sb.push(quotes);
+                }
+                if (hasQuotes) {
+                    value = value.replaceAll(quotes, dblQuotes);
+                }
+                sb.push(value);
+                if (hasSep || hasQuotes || hasLines) {
+                    sb.push(quotes);
                 }
             }
-            sb.push('\n');
 
-            // Cuerpo del CSV            
-            for (const r of this.currentRows) {
+            // Cabeceras del CSV            
+            for (let i = 0; i < hs.length; i++) {
+                const value = hs[i].title;                
+                
+                writeValue(sb, value);                                            
+                if (i < (hs.length - 1)) {
+                    sb.push(sep);
+                }
+            }
+            if (sb.length) {
+                sb.push(nl);
+            }
+
+            // Cuerpo del CSV 
+            let nRows = 0;           
+            for (const row of this.currentRows) {
                 for (let i = 0; i < hs.length; i++) {
-                    sb.push('\"');
-                    sb.push(String(r[hs[i].key] ?? '').replace("\"", "\"\""));
-                    sb.push('\"');
+                    const value = String(row[hs[i].key] ?? '');
+
+                    writeValue(sb, value);                    
                     if (i < (hs.length - 1)) {
-                        sb.push(';');
+                        sb.push(sep);
                     }
                 }
-                sb.push('\n');
+                nRows++;
+                if (nRows < this.currentRows.length) {
+                    sb.push(nl);
+                }
             }
 
             return sb.join('');
@@ -725,7 +759,7 @@ app.component('table-quick', {
                     z-index: 1;
                     background-color: lightgray;
                     border: 1px solid black;
-                    max-height: ${this.columnsMaxHeight}rem;
+                    max-height: ${this.columnsMultiselectMaxHeight}rem;
                     overflow: auto;
                 }
 
